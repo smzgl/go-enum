@@ -366,13 +366,20 @@ func (g *Generator) parseEnum(ts *ast.TypeSpec) (*Enum, error) {
 	var (
 		data     interface{}
 		unsigned bool
+		signed   bool
 	)
-	if strings.HasPrefix(enum.Type, "u") {
+
+	switch {
+	case strings.HasPrefix(enum.Type, "uint"):
 		data = uint64(0)
 		unsigned = true
-	} else {
+	case strings.HasPrefix(enum.Type, "int"):
 		data = int64(0)
+		signed = true
+	case strings.HasPrefix(enum.Type, "string"):
+		data = ""
 	}
+
 	for _, value := range values {
 		var comment string
 
@@ -400,7 +407,7 @@ func (g *Generator) parseEnum(ts *ast.TypeSpec) (*Enum, error) {
 							return nil, err
 						}
 						data = newData
-					} else {
+					} else if signed {
 						newData, err := strconv.ParseInt(dataVal, 10, 64)
 						if err != nil {
 							err = errors.Wrapf(err, "failed parsing the data part of enum value '%s'", value)
@@ -408,6 +415,12 @@ func (g *Generator) parseEnum(ts *ast.TypeSpec) (*Enum, error) {
 							return nil, err
 						}
 						data = newData
+					} else {
+						if dataVal[0] == '"' && dataVal[len(dataVal)-1] == '"' {
+							data = dataVal[1 : len(dataVal)-1]
+						} else {
+							data = dataVal
+						}
 					}
 					value = value[:equalIndex]
 				} else {
@@ -423,6 +436,11 @@ func (g *Generator) parseEnum(ts *ast.TypeSpec) (*Enum, error) {
 				prefixedName = sanitizeValue(prefixedName)
 				if !g.leaveSnakeCase {
 					prefixedName = snakeToCamelCase(prefixedName)
+				}
+			}
+			if !signed && !unsigned {
+				if s, ok := data.(string); !ok || s == "" {
+					data = rawName
 				}
 			}
 
@@ -443,6 +461,8 @@ func increment(d interface{}) interface{} {
 		return v + 1
 	case int64:
 		return v + 1
+	case string:
+		return ""
 	}
 	return d
 }

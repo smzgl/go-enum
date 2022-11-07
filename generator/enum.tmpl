@@ -9,6 +9,8 @@ package {{.package}}
 
 import (
     "fmt"
+
+    "database/sql/driver"
 )
 {{end -}}
 
@@ -44,6 +46,10 @@ func (x {{.enum.Name}}) String() string {
 	return fmt.Sprintf("{{.enum.Name}}(%d)", x)
 }
 
+func (x {{.enum.Name}}) Number() int32 {
+	return int32(x)
+}
+
 var _{{.enum.Name}}Value = {{ unmapify .enum .lowercase }}
 
 // Parse{{.enum.Name}} attempts to convert a string to a {{.enum.Name}}.
@@ -76,6 +82,29 @@ func (x {{.enum.Name}}) Ptr() *{{.enum.Name}} {
 {{end}}
 
 {{ if .marshal }}
+
+// MarshalJSON correctly serializes a Null{{.enum.Name}} to JSON.
+func (x {{.enum.Name}}) MarshalJSON() ([]byte, error) {
+    return strconv.AppendInt([]byte{}, int64(x), 32), nil
+}
+
+// UnmarshalJSON correctly deserializes a Null{{.enum.Name}} from JSON.
+func (x *{{.enum.Name}}) UnmarshalJSON(b []byte) error {
+	i, err := strconv.ParseInt(string(b), 10, 32)
+	if err != nil {
+		return err
+	}
+
+	tmp := {{.enum.Name}}(i)
+	_, ok := _{{.enum.Name}}Map[tmp]
+	if !ok {
+		return fmt.Errorf("%s is %w", i, ErrInvalid{{.enum.Name}})
+	}
+
+	*x = tmp
+	return nil
+}
+
 // MarshalText implements the text marshaller method.
 func (x {{.enum.Name}}) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
@@ -102,6 +131,13 @@ func (x *{{.enum.Name}}) Scan(value interface{}) (err error) {
 		*x = {{.enum.Name}}(0)
 		return
 	}
+
+    if valuer, ok := value.(driver.Valuer); ok {
+        value, err = valuer.Value()
+        if err != nil {
+            return err
+        }
+    }
 
 	// A wider range of scannable types.
 	// driver.Value values at the top of the list for expediency
@@ -218,7 +254,7 @@ func (x *{{.enum.Name}}) Type() string {
 type Null{{.enum.Name}} struct{
 	{{.enum.Name}}	{{.enum.Name}}
 	Valid 					bool{{/* Add some info as to whether this value was set during unmarshalling or not */}}{{if .marshal }}
-	Set							bool{{ end }}
+	//Set							bool{{ end }}
 }
 
 func NewNull{{.enum.Name}}(val interface{}) (x Null{{.enum.Name}}) {
@@ -226,9 +262,14 @@ func NewNull{{.enum.Name}}(val interface{}) (x Null{{.enum.Name}}) {
 	return
 }
 
+// Set implements the Setter interface.
+func (x *Null{{.enum.Name}}) Set(v {{.enum.Name}}) {
+    x.Scan(v)
+}
+
 // Scan implements the Scanner interface.
 func (x *Null{{.enum.Name}}) Scan(value interface{}) (err error) {
-	{{- if .marshal }}x.Set = true{{ end }}
+	//{{- if .marshal }}x.Set = true{{ end }}
 	if value == nil {
 		x.{{.enum.Name}}, x.Valid = {{.enum.Name}}(0), false
 		return
@@ -270,7 +311,7 @@ func (n Null{{.enum.Name}}) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON correctly deserializes a Null{{.enum.Name}} from JSON.
 func (n *Null{{.enum.Name}}) UnmarshalJSON(b []byte) error {
-	n.Set = true
+	//n.Set = true
 	var x interface{}
 	err := json.Unmarshal(b, &x)
 	if err != nil{
@@ -312,7 +353,7 @@ func (n Null{{.enum.Name}}Str) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON correctly deserializes a Null{{.enum.Name}} from JSON.
 func (n *Null{{.enum.Name}}Str) UnmarshalJSON(b []byte) error {
-	n.Set = true
+	//n.Set = true
 	var x interface{}
 	err := json.Unmarshal(b, &x)
 	if err != nil{
