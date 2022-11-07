@@ -29,3 +29,4 @@
 //
 //	go generate ./
 package main
+
