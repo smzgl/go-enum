@@ -67,12 +67,12 @@ func UnmapifyStringEnum(e Enum, lowercase bool) (ret string, err error) {
 	}
 	for _, val := range e.Values {
 		if val.Name != skipHolder {
-			_, err = builder.WriteString(fmt.Sprintf("%q:%s,\n", val.RawName, val.PrefixedName))
+			_, err = builder.WriteString(fmt.Sprintf("%q:%s,\n", val.Value, val.PrefixedName))
 			if err != nil {
 				return
 			}
-			if lowercase && strings.ToLower(val.RawName) != val.RawName {
-				_, err = builder.WriteString(fmt.Sprintf("%q:%s,\n", strings.ToLower(val.RawName), val.PrefixedName))
+			if lowercase && strings.ToLower(val.Value.(string)) != val.Value {
+				_, err = builder.WriteString(fmt.Sprintf("%q:%s,\n", strings.ToLower(val.Value.(string)), val.PrefixedName))
 				if err != nil {
 					return
 				}
