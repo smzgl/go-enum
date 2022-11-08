@@ -137,6 +137,9 @@ func (x *{{.enum.Name}}) Scan(value interface{}) (err error) {
         if err != nil {
             return err
         }
+        if value == nil {
+            return nil
+        }
     }
 
 	// A wider range of scannable types.
