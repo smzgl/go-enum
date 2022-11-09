@@ -76,8 +76,18 @@ func MustParse{{.enum.Name}}(name string) {{.enum.Name}} {
 {{end}}
 
 {{ if .ptr }}
+// Elem implements the Ptr interface.
 func (x {{.enum.Name}}) Ptr() *{{.enum.Name}} {
 	return &x
+}
+
+// Elem implements the Elem interface.
+func (x *{{.enum.Name}}) Elem() {{.enum.Name}} {
+    if x != nil {
+        return *x
+    }
+
+    return *(new({{.enum.Name}}))
 }
 {{end}}
 
