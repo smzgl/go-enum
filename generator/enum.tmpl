@@ -11,6 +11,7 @@ import (
     "fmt"
 
     "database/sql/driver"
+    "github.com/modern-go/reflect2"
 )
 {{end -}}
 
@@ -50,6 +51,10 @@ func (x {{.enum.Name}}) Number() int32 {
 	return int32(x)
 }
 
+func (x {{.enum.Name}}) Error() string {
+	return fmt.Sprintf("code: %d, msg: %s", x.Number(), x.String())
+}
+
 var _{{.enum.Name}}Value = {{ unmapify .enum .lowercase }}
 
 // Parse{{.enum.Name}} attempts to convert a string to a {{.enum.Name}}.
@@ -76,18 +81,18 @@ func MustParse{{.enum.Name}}(name string) {{.enum.Name}} {
 {{end}}
 
 {{ if .ptr }}
-// Elem implements the Ptr interface.
+// Ptr implements the Ptr interface.
 func (x {{.enum.Name}}) Ptr() *{{.enum.Name}} {
 	return &x
 }
 
 // Elem implements the Elem interface.
-func (x *{{.enum.Name}}) Elem() {{.enum.Name}} {
+func (x *{{.enum.Name}}) Elem() (value {{.enum.Name}}) {
     if x != nil {
         return *x
     }
 
-    return *(new({{.enum.Name}}))
+    return
 }
 {{end}}
 
@@ -137,7 +142,7 @@ var err{{.enum.Name}}NilPtr = errors.New("value pointer is nil") // one per type
 
 // Scan implements the Scanner interface.
 func (x *{{.enum.Name}}) Scan(value interface{}) (err error) {
-	if value == nil {
+	if value == nil || reflect2.IsNil(value) {
 		*x = {{.enum.Name}}(0)
 		return
 	}
@@ -232,7 +237,8 @@ func (x *{{.enum.Name}}) Scan(value interface{}) (err error) {
 {{ if or .sql .sqlnullstr }}
 // Value implements the driver Valuer interface.
 func (x {{.enum.Name}}) Value() (driver.Value, error) {
-	return x.String(), nil
+	//return x.String(), nil
+	return int64(x), nil
 }
 {{ else }}
 // Value implements the driver Valuer interface.
@@ -283,7 +289,7 @@ func (x *Null{{.enum.Name}}) Set(v {{.enum.Name}}) {
 // Scan implements the Scanner interface.
 func (x *Null{{.enum.Name}}) Scan(value interface{}) (err error) {
 	//{{- if .marshal }}x.Set = true{{ end }}
-	if value == nil {
+	if value == nil || reflect2.IsNil(value) {
 		x.{{.enum.Name}}, x.Valid = {{.enum.Name}}(0), false
 		return
 	}
